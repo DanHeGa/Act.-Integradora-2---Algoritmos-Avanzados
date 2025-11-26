@@ -6,9 +6,13 @@
 #include <unordered_set>
 #include <filesystem>
 #include <fstream>
+#include <algorithm>
 
 using namespace std;
+
 namespace fs = std::filesystem;
+
+#define INF 1e9
 
 struct Colony
 {
@@ -201,8 +205,88 @@ public:
         }
     }
 
-    void findOptimumRoute()
+    void tsp()
     {
+        outputFile << "-------------------\n";
+        outputFile << "2 - La ruta óptima.\n\n";
+
+        vector<int> nonCentral;
+        for (int i = 0; i < colonies.size(); i++)
+        {
+            if (!colonies[i].central)
+                nonCentral.push_back(i);
+        }
+
+        int k = nonCentral.size();
+        int FULL = 1 << k;
+        vector<vector<int>> dp(FULL, vector<int>(k, INF));
+        vector<vector<int>> parent(FULL, vector<int>(k, -1));
+        dp[1][0] = 0;
+
+        for (int mask = 1; mask < FULL; mask++)
+        {
+            for (int last = 0; last < k; last++)
+            {
+                if (!(mask & (1 << last)))
+                    continue;
+
+                int lastNode = nonCentral[last];
+                for (int next = 0; next < k; next++)
+                {
+                    if (mask & (1 << next))
+                        continue;
+                    int nextNode = nonCentral[next];
+                    int newMask = mask | (1 << next);
+                    int cost = dp[mask][last] + matAdj[lastNode][nextNode].first;
+                    if (cost < dp[newMask][next])
+                    {
+                        dp[newMask][next] = cost;
+                        parent[newMask][next] = last;
+                    }
+                }
+            }
+        }
+
+        int bestCost = INF;
+        int lastIdx = -1;
+        for (int last = 1; last < k; last++)
+        {
+            int lastNode = nonCentral[last];
+            int cost = dp[FULL - 1][last] + matAdj[lastNode][nonCentral[0]].first;
+            if (cost < bestCost)
+            {
+                bestCost = cost;
+                lastIdx = last;
+            }
+        }
+
+        vector<int> order;
+        int mask = FULL - 1;
+        int cur = lastIdx;
+        while (cur != -1)
+        {
+            order.push_back(cur);
+            int prev = parent[mask][cur];
+            mask ^= (1 << cur);
+            cur = prev;
+        }
+
+        reverse(order.begin(), order.end());
+        int realPrev = nonCentral[order[0]];
+        outputFile << colonies[realPrev].name;
+        for (int i = 1; i < order.size(); i++)
+        {
+            int realNext = nonCentral[order[i]];
+            outputFile << " - ";
+            checkTrajectory(realPrev, realNext);
+            outputFile << colonies[realNext].name;
+            realPrev = realNext;
+        }
+
+        outputFile << " - ";
+        checkTrajectory(realPrev, nonCentral[0]);
+        outputFile << colonies[nonCentral[0]].name;
+        outputFile << "\n\nLa Ruta Óptima tiene un costo total de: " << bestCost << "\n\n";
     }
 
     void checkTrajectory(int x, int y)
@@ -296,17 +380,16 @@ public:
 
 int main()
 {
-
     string outputFile = "checking2.txt";
 
-    // n = cantidad de colonias, m= numero de colecciones,
-    // k = conecciones con nuevo cableado, q = futuras colonias a conectar
+    // n = number of colonies, m = number of collections,
+    // k = connections with new cabling, q = future colonies to connect
     int n, m, k, q;
     cin >> n >> m >> k >> q;
 
     string colony_name;
     int x, y;
-    bool central; // central 1, NO central 0
+    bool central; // central 1, not central 0
 
     vector<Colony> colonies_input;
     // Get colonies vector
@@ -338,20 +421,19 @@ int main()
         g.changeConnectionCable(srcIdx, dstIdx, true);
     }
 
-    string newColName;
-    int newX, newY;
-
     // PT. 1
     g.primMST();
 
     // PT. 2
     g.floyd();
-    g.findOptimumRoute();
+    g.tsp();
 
     // PT. 3
     g.optimalCentralRoute();
 
     // PT. 4
+    string newColName;
+    int newX, newY;
     vector<Colony> newColonies; // use of newColonies vector to avoid connection between two new colonies
     for (int i = 0; i < q; i++)
     {
