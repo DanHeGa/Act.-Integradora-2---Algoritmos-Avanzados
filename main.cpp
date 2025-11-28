@@ -308,6 +308,9 @@ public:
 
     void optimalCentralRoute()
     {
+        outputFile << "-------------------\n";
+        outputFile << "3 - Caminos más cortos entre centrales.\n\n"; 
+
         vector<Colony> centrals;
         for (int i = 0; i < colonies.size(); i++)
         {
@@ -326,22 +329,12 @@ public:
             {
                 int src = colonyIdx(centrals[i].name);
                 int dst = colonyIdx(centrals[j].name);
-                if (matAdj[src][dst].first < minDist)
-                {
-                    minDist = matAdj[src][dst].first;
-                    bestSrc = src;
-                    bestDst = dst;
-                }
+                printPath(src, dst);
+                outputFile << " (" << matAdj[src][dst].first << ")\n";
             }
         }
 
-        if (bestSrc != -1 && bestDst != -1)
-        {
-            outputFile << "-------------------\n";
-            outputFile << "3 - Caminos más cortos entre centrales.\n\n";
-            printPath(bestSrc, bestDst);
-            outputFile << " (" << minDist << ")\n\n";
-        }
+        outputFile << "\n";
     }
 
     float eucladian(Colony &col1, Colony &col2)
